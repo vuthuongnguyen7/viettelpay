@@ -29,9 +29,9 @@ type SOAPEnvelopeResponse struct {
 }
 
 type SOAPEnvelope struct {
-	XMLName  xml.Name `xml:"soap:Envelope"`
-	XmlNS    string   `xml:"xmlns:soap,attr"`
-	XmlNSPar string   `xml:"xmlns:par,omitempty,attr"`
+	XMLName xml.Name `xml:"soap:Envelope"`
+	XmlNS   string   `xml:"xmlns:soap,attr"`
+	XmlNS2  string   `xml:"xmlns:ns2,omitempty,attr"`
 
 	Header *SOAPHeader
 	Body   SOAPBody
@@ -254,7 +254,7 @@ type options struct {
 	httpHeaders      map[string]string
 	mtom             bool
 	mma              bool
-	nsPar            string
+	ns2              string
 }
 
 var defaultOptions = options{
@@ -313,10 +313,10 @@ func WithTimeout(t time.Duration) Option {
 	}
 }
 
-// WithNSPar is an Option to set namespace par
-func WithNSPar(ns string) Option {
+// WithNS2 is an Option to set namespace 2
+func WithNS2(ns2 string) Option {
 	return func(o *options) {
-		o.nsPar = ns
+		o.ns2 = ns2
 	}
 }
 
@@ -424,8 +424,8 @@ func (s *Client) call(ctx context.Context, soapAction string, request, response 
 	retAttachments *[]MIMEMultipartAttachment) error {
 	// SOAP envelope capable of namespace prefixes
 	envelope := SOAPEnvelope{
-		XmlNS:    XmlNsSoapEnv,
-		XmlNSPar: s.opts.nsPar,
+		XmlNS:  XmlNsSoapEnv,
+		XmlNS2: s.opts.ns2,
 	}
 
 	if s.headers != nil && len(s.headers) > 0 {
