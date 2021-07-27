@@ -28,9 +28,6 @@ func (e *EnvelopeBase) SetPassword(val string) {
 func (e *EnvelopeBase) SetServiceCode(val string) {
 	e.ServiceCode = val
 }
-func (e *EnvelopeBase) SetOrderID(val string) {
-	e.OrderID = val
-}
 
 type EnvelopeResponse struct {
 	Data      json.RawMessage `json:"data"`
@@ -76,7 +73,6 @@ func (s *partnerAPI) Process(ctx context.Context, req Request, result interface{
 
 	envReq := req.Envelope()
 	envReq.SetData(buf.Bytes())
-	envReq.SetOrderID(s.opts.genID())
 	envReq.SetPassword(passwordEncrypted)
 	envReq.SetServiceCode(s.opts.serviceCode)
 	envReq.SetUsername(s.opts.username)

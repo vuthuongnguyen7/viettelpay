@@ -2,7 +2,6 @@ package viettelpay
 
 type Envelope interface {
 	SetData([]byte)
-	SetOrderID(string)
 	SetPassword(string)
 	SetServiceCode(string)
 	SetUsername(string)
