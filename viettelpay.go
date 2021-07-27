@@ -1,12 +1,9 @@
 package viettelpay
 
 import (
-	"bytes"
 	"context"
 	"crypto/rand"
 	"crypto/rsa"
-	"encoding/base64"
-	"encoding/json"
 	"os"
 	"time"
 
@@ -18,22 +15,44 @@ func DefaultGenID() string {
 	return ulid.MustNew(ulid.Timestamp(time.Now()), rand.Reader).String()
 }
 
-type CheckAccountRequest struct {
+type CheckAccount struct {
 	MSISDN       string `json:"msisdn"`
 	CustomerName string `json:"customerName"`
 }
 
 type CheckAccountResponse struct {
-	MSISDN       string `json:"msisdn"`
-	CustomerName string `json:"customerName"`
-	Package      string `json:"package"`
-	Code         string `json:"errorCode"`
-	Message      string `json:"errorMsg"`
+	CheckAccount
+	Package string `json:"package"`
+	Code    string `json:"errorCode"`
+	Message string `json:"errorMsg"`
+}
+
+type RequestPayment struct {
+	TransactionID string `json:"transId"`
+	MSISDN        string `json:"msisdn"`
+	CustomerName  string `json:"customerName"`
+	Amount        int64  `json:"amount"`
+	SMSContent    string `json:"smsContent"`
+	Note          string `json:"note"`
+}
+
+type RequestPaymentResponse struct {
+	RequestPayment
+	Code    string `json:"errorCode"`
+	Message string `json:"errorMsg"`
+}
+
+type RequestPaymentEnvelope struct {
+	EnvelopeBase
+	TotalAmount        int64  `json:"totalAmount"`
+	TotalTransactions  int    `json:"totalTrans"`
+	TransactionContent string `json:"transContent"`
 }
 
 type PartnerAPI interface {
-	Process(ctx context.Context, cmd string, request, response interface{}) error
-	CheckAccount(ctx context.Context, checks ...CheckAccountRequest) ([]CheckAccountResponse, error)
+	Process(ctx context.Context, req Request, response interface{}) error
+	CheckAccount(ctx context.Context, checks ...CheckAccount) ([]CheckAccountResponse, error)
+	RequestPayment(ctx context.Context, transactionContent string, reqs ...RequestPayment) ([]RequestPaymentResponse, error)
 }
 
 type options struct {
@@ -99,107 +118,28 @@ func NewPartnerAPI(ctx context.Context, url string, opt ...Option) (_ PartnerAPI
 	}, nil
 }
 
-func (s *partnerAPI) CheckAccount(ctx context.Context, checks ...CheckAccountRequest) ([]CheckAccountResponse, error) {
-	var results []CheckAccountResponse
-	if err := s.Process(ctx, "VTP305", checks, &results); err != nil {
+func (s *partnerAPI) CheckAccount(ctx context.Context, checks ...CheckAccount) ([]CheckAccountResponse, error) {
+	results := []CheckAccountResponse{}
+	err := s.Process(ctx, NewRequest("VTP305", checks, nil), &results)
+	if err != nil {
 		return nil, err
 	}
 	return results, nil
 }
 
-type EnvelopeRequest struct {
-	Username    string `json:"username"`
-	Password    string `json:"password"`
-	ServiceCode string `json:"serviceCode"`
-	OrderID     string `json:"orderId"`
-	Data        []byte `json:"data"`
-}
-
-type EnvelopeResponse struct {
-	Data      json.RawMessage `json:"data"`
-	Signature []byte          `json:"signature"`
-}
-
-type EnvelopeResponseData struct {
-	OrderID string `json:"orderId"`
-	Data    []byte `json:"data"`
-
-	Username        string `json:"username"`
-	ServiceCode     string `json:"serviceCode"`
-	RealServiceCode string `json:"realServiceCode"`
-
-	RequestId string `json:"requestId"`
-	TransDate string `json:"transDate"`
-
-	ErrorCode string `json:"errorCode"`
-	ErrorDesc string `json:"errorDesc"`
-}
-
-func (e EnvelopeResponseData) CheckError() error {
-	if e.ErrorCode != "00" {
-		return &ViettelPayError{
-			Code: e.ErrorCode,
-			Desc: e.ErrorDesc,
-		}
+func (s *partnerAPI) RequestPayment(ctx context.Context, transactionContent string, reqs ...RequestPayment) ([]RequestPaymentResponse, error) {
+	env := &RequestPaymentEnvelope{
+		TotalTransactions:  len(reqs),
+		TransactionContent: transactionContent,
+	}
+	for _, v := range reqs {
+		env.TotalAmount += v.Amount
 	}
 
-	return nil
-}
-
-func (s *partnerAPI) Process(ctx context.Context, cmd string, data, result interface{}) error {
-	passwordEncrypted, err := s.Encrypt(([]byte)(s.opts.password))
+	results := []RequestPaymentResponse{}
+	err := s.Process(ctx, NewRequest("VTP306", reqs, env), &results)
 	if err != nil {
-		return err
+		return nil, err
 	}
-
-	buf := bytes.NewBuffer(nil)
-	if err = MarshalGzipJSON(buf, data); err != nil {
-		return err
-	}
-
-	dataJSON, err := json.Marshal(&EnvelopeRequest{
-		Data:        buf.Bytes(),
-		OrderID:     s.opts.genID(),
-		Password:    passwordEncrypted,
-		ServiceCode: s.opts.serviceCode,
-		Username:    s.opts.username,
-	})
-	if err != nil {
-		return err
-	}
-
-	signature, err := s.Sign(dataJSON)
-	if err != nil {
-		return err
-	}
-
-	res, err := s.call(ctx, &Process{
-		Cmd:       cmd,
-		Data:      string(dataJSON),
-		Signature: base64.StdEncoding.EncodeToString(signature),
-	})
-	if err != nil {
-		return err
-	}
-
-	var envRes EnvelopeResponse
-	err = json.NewDecoder(bytes.NewBufferString(res.Return_)).
-		Decode(&envRes)
-	if err != nil {
-		return err
-	}
-	if err = s.Verify(envRes.Data, envRes.Signature); err != nil {
-		return err
-	}
-
-	var envResData EnvelopeResponseData
-	if err = json.Unmarshal(envRes.Data, &envResData); err != nil {
-		return err
-	}
-
-	if err = envResData.CheckError(); err != nil {
-		return err
-	}
-
-	return UnmarshalGzipJSON(bytes.NewReader(envResData.Data), result)
+	return results, nil
 }
