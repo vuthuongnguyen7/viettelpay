@@ -49,7 +49,8 @@ func main() {
 		panic(err)
 	}
 
-	// result, err := partnerAPI.RequestPayment(ctx, "Test", reqs2...)
+	// orderID := viettelpay.GenOrderID()
+	// result, err := partnerAPI.RequestDisbursement(ctx, orderID, "Test", reqs2...)
 	// if err != nil {
 	// 	panic(err)
 	// }
