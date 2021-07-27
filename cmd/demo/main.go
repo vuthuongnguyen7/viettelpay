@@ -33,7 +33,12 @@ var reqs2 = []viettelpay.RequestDisbursement{
 func main() {
 	ctx := context.Background()
 
-	partnerAPI, err := viettelpay.ProvidePartnerAPI(ctx, nil)
+	cfg, err := viettelpay.ProvideConfig(ctx)
+	if err != nil {
+		panic(err)
+	}
+
+	partnerAPI, err := viettelpay.ProvidePartnerAPI(cfg, nil)
 	if err != nil {
 		panic(err)
 	}

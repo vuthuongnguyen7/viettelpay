@@ -40,7 +40,7 @@ type Config struct {
 	ViettelPublicKey  BlockPEM `env:"VIETTEL_PUBLIC_KEY"`
 }
 
-func ProvidePartnerAPI(ctx context.Context, client HTTPClient) (PartnerAPI, error) {
+func ProvideConfig(ctx context.Context) (*Config, error) {
 	var config Config
 
 	l := envconfig.PrefixLookuper("VIETTELPAY_", envconfig.OsLookuper())
@@ -49,14 +49,18 @@ func ProvidePartnerAPI(ctx context.Context, client HTTPClient) (PartnerAPI, erro
 		return nil, err
 	}
 
-	keyStore, err := NewKeyStore(config.PartnerPrivateKey, config.ViettelPublicKey)
+	return &config, nil
+}
+
+func ProvidePartnerAPI(cfg *Config, client HTTPClient) (PartnerAPI, error) {
+	keyStore, err := NewKeyStore(cfg.PartnerPrivateKey, cfg.ViettelPublicKey)
 	if err != nil {
 		return nil, err
 	}
 
 	return NewPartnerAPI(
-		config.BaseURL,
-		WithAuth(config.Username, config.Password, config.ServiceCode),
+		cfg.BaseURL,
+		WithAuth(cfg.Username, cfg.Password, cfg.ServiceCode),
 		WithHTTPClient(client),
 		WithKeyStore(keyStore),
 	)
