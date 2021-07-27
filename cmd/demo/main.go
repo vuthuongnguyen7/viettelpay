@@ -16,7 +16,7 @@ var reqs = []viettelpay.CheckAccount{
 	{MSISDN: "84968008909", CustomerName: "Cong Ly"},
 }
 
-var reqs2 = []viettelpay.RequestPayment{
+var reqs2 = []viettelpay.RequestDisbursement{
 	{
 		TransactionID: viettelpay.GenOrderID(),
 		SMSContent:    "hello@giautm.dev",
@@ -46,9 +46,9 @@ func main() {
 	// }
 	// fmt.Println(result)
 
-	result, err := partnerAPI.QueryRequestPayment(ctx,
+	result, err := partnerAPI.QueryRequests(ctx,
 		"01FBK4322AXR0KG5AAQ2E73A6C",
-		viettelpay.QueryMSISDN("84336392248"),
+		viettelpay.QueryByMSISDN("84336392248"),
 	)
 	if err != nil {
 		panic(err)

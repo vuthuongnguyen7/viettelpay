@@ -5,15 +5,15 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/json"
-	"fmt"
 )
 
 type EnvelopeBase struct {
-	Username    string `json:"username"`
 	Password    string `json:"password"`
 	ServiceCode string `json:"serviceCode"`
-	OrderID     string `json:"orderId"`
-	Data        []byte `json:"data"`
+	Username    string `json:"username"`
+
+	Data    []byte `json:"data"`
+	OrderID string `json:"orderId"`
 }
 
 func (e *EnvelopeBase) SetData(val []byte) {
@@ -35,23 +35,31 @@ type EnvelopeResponse struct {
 }
 
 type EnvelopeResponseData struct {
-	OrderID string `json:"orderId"`
 	Data    []byte `json:"data"`
+	OrderID string `json:"orderId"`
 
-	Username        string `json:"username"`
-	ServiceCode     string `json:"serviceCode"`
 	RealServiceCode string `json:"realServiceCode"`
+	ServiceCode     string `json:"serviceCode"`
+	Username        string `json:"username"`
 
 	RequestId string `json:"requestId"`
 	TransDate string `json:"transDate"`
+
+	BatchErrorCode string `json:"batchErrorCode"`
+	BatchErrorDesc string `json:"batchErrorDesc"`
 
 	ErrorCode string `json:"errorCode"`
 	ErrorDesc string `json:"errorDesc"`
 }
 
-func (e EnvelopeResponseData) CheckError() *ViettelPayError {
+func (e EnvelopeResponseData) CheckError() error {
 	if e.ErrorCode != "00" {
 		return &ViettelPayError{
+			Code: e.ErrorCode,
+			Desc: e.ErrorDesc,
+		}
+	} else if e.BatchErrorCode != "" {
+		return &ViettelPayBatchError{
 			Code: e.ErrorCode,
 			Desc: e.ErrorDesc,
 		}
@@ -96,7 +104,6 @@ func (s *partnerAPI) Process(ctx context.Context, req Request, result interface{
 		return err
 	}
 
-	fmt.Println(res.Return_)
 	var envRes EnvelopeResponse
 	err = json.NewDecoder(bytes.NewBufferString(res.Return_)).
 		Decode(&envRes)
@@ -112,12 +119,12 @@ func (s *partnerAPI) Process(ctx context.Context, req Request, result interface{
 		return err
 	}
 
-	if err := envResData.CheckError(); err != nil {
-		// Always return error for PXX code
-		if len(err.Code) == 3 && err.Code[0] == 'P' {
-			return err
-		}
+	// NOTE: VTP also return data in case errors happen.
+	// So, we unmarshal data first then check error late.
+	err = UnmarshalGzipJSON(bytes.NewReader(envResData.Data), result)
+	if err != nil {
+		return err
 	}
 
-	return UnmarshalGzipJSON(bytes.NewReader(envResData.Data), result)
+	return envResData.CheckError()
 }

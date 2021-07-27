@@ -8,12 +8,8 @@ import (
 	"time"
 
 	"giautm.dev/viettelpay/soap"
-	"github.com/oklog/ulid"
+	ulid "github.com/oklog/ulid/v2"
 )
-
-func GenOrderID() string {
-	return ulid.MustNew(ulid.Timestamp(time.Now()), rand.Reader).String()
-}
 
 type CheckAccount struct {
 	MSISDN       string `json:"msisdn"`
@@ -27,7 +23,7 @@ type CheckAccountResponse struct {
 	Message string `json:"errorMsg"`
 }
 
-type RequestPayment struct {
+type RequestDisbursement struct {
 	TransactionID string `json:"transId"`
 	MSISDN        string `json:"msisdn"`
 	CustomerName  string `json:"customerName"`
@@ -36,35 +32,60 @@ type RequestPayment struct {
 	Note          string `json:"note"`
 }
 
-type RequestPaymentResponse struct {
-	RequestPayment
+type RequestDisbursementResponse struct {
+	RequestDisbursement
 	Code    string `json:"errorCode"`
 	Message string `json:"errorMsg"`
 }
 
-type RequestPaymentEnvelope struct {
+type RequestDisbursementEnvelope struct {
 	EnvelopeBase
 	TotalAmount        int64  `json:"totalAmount"`
 	TotalTransactions  int    `json:"totalTrans"`
 	TransactionContent string `json:"transContent"`
 }
 
-type QueryRequestPaymentEnvelope struct {
+type QueryRequestEnvelope struct {
 	EnvelopeBase
 	QueryType string `json:"queryType,omitempty"`
 	QueryData string `json:"queryData,omitempty"`
 }
 
-type QueryPayment interface {
+type QueryRequests interface {
 	Type() string
 	Data() string
 }
 
+type QueryByTransaction string
+
+func (q QueryByTransaction) Type() string {
+	return "TRANS_ID"
+}
+
+func (q QueryByTransaction) Data() string {
+	return string(q)
+}
+
+type QueryByMSISDN string
+
+func (q QueryByMSISDN) Type() string {
+	return "MSISDN"
+}
+
+func (q QueryByMSISDN) Data() string {
+	return string(q)
+}
+
 type PartnerAPI interface {
 	Process(ctx context.Context, req Request, response interface{}) error
+
 	CheckAccount(ctx context.Context, orderID string, checks ...CheckAccount) ([]CheckAccountResponse, error)
-	RequestPayment(ctx context.Context, orderID string, transactionContent string, reqs ...RequestPayment) ([]RequestPaymentResponse, error)
-	QueryRequestPayment(ctx context.Context, orderID string, query QueryPayment) ([]RequestPaymentResponse, error)
+	RequestDisbursement(ctx context.Context, orderID string, transactionContent string, reqs ...RequestDisbursement) ([]RequestDisbursementResponse, error)
+	QueryRequests(ctx context.Context, orderID string, query QueryRequests) ([]RequestDisbursementResponse, error)
+}
+
+func GenOrderID() string {
+	return ulid.MustNew(ulid.Timestamp(time.Now()), rand.Reader).String()
 }
 
 type options struct {
@@ -139,8 +160,8 @@ func (s *partnerAPI) CheckAccount(ctx context.Context, orderID string, checks ..
 	return results, nil
 }
 
-func (s *partnerAPI) RequestPayment(ctx context.Context, orderID string, transactionContent string, reqs ...RequestPayment) ([]RequestPaymentResponse, error) {
-	env := &RequestPaymentEnvelope{
+func (s *partnerAPI) RequestDisbursement(ctx context.Context, orderID string, transactionContent string, reqs ...RequestDisbursement) ([]RequestDisbursementResponse, error) {
+	env := &RequestDisbursementEnvelope{
 		TotalTransactions:  len(reqs),
 		TransactionContent: transactionContent,
 	}
@@ -149,7 +170,7 @@ func (s *partnerAPI) RequestPayment(ctx context.Context, orderID string, transac
 		env.TotalAmount += v.Amount
 	}
 
-	results := []RequestPaymentResponse{}
+	results := []RequestDisbursementResponse{}
 	err := s.Process(ctx, NewRequest("VTP306", reqs, env), &results)
 	if err != nil {
 		return nil, err
@@ -159,34 +180,14 @@ func (s *partnerAPI) RequestPayment(ctx context.Context, orderID string, transac
 
 var emptyArray = []interface{}{}
 
-type QueryTransaction string
-
-func (q QueryTransaction) Type() string {
-	return "TRANS_ID"
-}
-
-func (q QueryTransaction) Data() string {
-	return string(q)
-}
-
-type QueryMSISDN string
-
-func (q QueryMSISDN) Type() string {
-	return "MSISDN"
-}
-
-func (q QueryMSISDN) Data() string {
-	return string(q)
-}
-
-func (s *partnerAPI) QueryRequestPayment(ctx context.Context, orderID string, query QueryPayment) ([]RequestPaymentResponse, error) {
-	env := &QueryRequestPaymentEnvelope{}
+func (s *partnerAPI) QueryRequests(ctx context.Context, orderID string, query QueryRequests) ([]RequestDisbursementResponse, error) {
+	env := &QueryRequestEnvelope{}
 	env.OrderID = orderID
 	if query != nil {
 		env.QueryType, env.QueryData = query.Type(), query.Data()
 	}
 
-	results := []RequestPaymentResponse{}
+	results := []RequestDisbursementResponse{}
 	err := s.Process(ctx, NewRequest("VTP307", emptyArray, env), &results)
 	if err != nil {
 		return nil, err
