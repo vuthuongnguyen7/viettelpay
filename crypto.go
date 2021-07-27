@@ -5,21 +5,52 @@ import (
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/sha1"
+	"crypto/x509"
 	"encoding/base64"
+	"errors"
 )
 
-func (s *partnerAPI) Sign(data []byte) ([]byte, error) {
-	hashed := sha1.Sum(data)
-	return s.PartnerPrivateKey.Sign(rand.Reader, hashed[:], crypto.SHA1)
+type KeyStore interface {
+	Sign(data []byte) (signature []byte, err error)
+	Verify(data, signature []byte) (err error)
+	Encrypt(msg []byte) (string, error)
 }
 
-func (s *partnerAPI) Verify(data, signature []byte) error {
-	hashed := sha1.Sum(data)
-	return rsa.VerifyPKCS1v15(s.ViettelPublicKey, crypto.SHA1, hashed[:], signature)
+type keyStore struct {
+	partnerPrivateKey *rsa.PrivateKey
+	viettelPublicKey  *rsa.PublicKey
 }
 
-func (s *partnerAPI) Encrypt(msg []byte) (string, error) {
-	keySize := s.ViettelPublicKey.Size()
+func NewKeyStore(partnerPriKey, viettelPubKey []byte) (_ KeyStore, err error) {
+	keys := &keyStore{}
+
+	if keys.partnerPrivateKey, err = x509.ParsePKCS1PrivateKey(partnerPriKey); err != nil {
+		return nil, err
+	}
+
+	if key, err := x509.ParsePKIXPublicKey(viettelPubKey); err != nil {
+		return nil, err
+	} else if rsaKey, ok := key.(*rsa.PublicKey); ok {
+		keys.viettelPublicKey = rsaKey
+	} else {
+		return nil, errors.New("invalid key type")
+	}
+
+	return keys, nil
+}
+
+func (s *keyStore) Sign(data []byte) ([]byte, error) {
+	hashed := sha1.Sum(data)
+	return s.partnerPrivateKey.Sign(rand.Reader, hashed[:], crypto.SHA1)
+}
+
+func (s *keyStore) Verify(data, signature []byte) error {
+	hashed := sha1.Sum(data)
+	return rsa.VerifyPKCS1v15(s.viettelPublicKey, crypto.SHA1, hashed[:], signature)
+}
+
+func (s *keyStore) Encrypt(msg []byte) (string, error) {
+	keySize := s.viettelPublicKey.Size()
 	maxLength := keySize - 42
 	dataLength := len(msg)
 	iterations := dataLength / maxLength
@@ -31,7 +62,7 @@ func (s *partnerAPI) Encrypt(msg []byte) (string, error) {
 			last = dataLength
 		}
 
-		bytes, err := rsa.EncryptPKCS1v15(rand.Reader, s.ViettelPublicKey, msg[i*maxLength:last])
+		bytes, err := rsa.EncryptPKCS1v15(rand.Reader, s.viettelPublicKey, msg[i*maxLength:last])
 		if err != nil {
 			return "", err
 		}

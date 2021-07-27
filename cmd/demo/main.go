@@ -6,6 +6,7 @@ import (
 
 	"giautm.dev/viettelpay"
 
+	_ "gocloud.dev/runtimevar/constantvar"
 	_ "gocloud.dev/runtimevar/filevar"
 )
 
@@ -32,10 +33,7 @@ var reqs2 = []viettelpay.RequestDisbursement{
 func main() {
 	ctx := context.Background()
 
-	partnerAPI, err := viettelpay.NewPartnerAPI(ctx,
-		"https://wallet.viettelpay.vn/uat/PartnerWS/PartnerAPI?wsdl",
-		viettelpay.WithAuth("HCMHYT8888", "HCMHYT8888@123", "HCMHYT8888"),
-	)
+	partnerAPI, err := viettelpay.ProvidePartnerAPI(ctx, nil)
 	if err != nil {
 		panic(err)
 	}

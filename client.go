@@ -69,7 +69,7 @@ func (e EnvelopeResponseData) CheckError() error {
 }
 
 func (s *partnerAPI) Process(ctx context.Context, req Request, result interface{}) error {
-	passwordEncrypted, err := s.Encrypt(([]byte)(s.opts.password))
+	passwordEncrypted, err := s.keyStore.Encrypt(([]byte)(s.password))
 	if err != nil {
 		return err
 	}
@@ -82,15 +82,15 @@ func (s *partnerAPI) Process(ctx context.Context, req Request, result interface{
 	envReq := req.Envelope()
 	envReq.SetData(buf.Bytes())
 	envReq.SetPassword(passwordEncrypted)
-	envReq.SetServiceCode(s.opts.serviceCode)
-	envReq.SetUsername(s.opts.username)
+	envReq.SetServiceCode(s.serviceCode)
+	envReq.SetUsername(s.username)
 
 	envReqJSON, err := json.Marshal(envReq)
 	if err != nil {
 		return err
 	}
 
-	signature, err := s.Sign(envReqJSON)
+	signature, err := s.keyStore.Sign(envReqJSON)
 	if err != nil {
 		return err
 	}
@@ -110,7 +110,7 @@ func (s *partnerAPI) Process(ctx context.Context, req Request, result interface{
 	if err != nil {
 		return err
 	}
-	if err = s.Verify(envRes.Data, envRes.Signature); err != nil {
+	if err = s.keyStore.Verify(envRes.Data, envRes.Signature); err != nil {
 		return err
 	}
 

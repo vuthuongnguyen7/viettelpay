@@ -3,8 +3,8 @@ package viettelpay
 import (
 	"context"
 	"crypto/rand"
-	"crypto/rsa"
-	"os"
+	"errors"
+	"net/http"
 	"time"
 
 	"giautm.dev/viettelpay/soap"
@@ -88,10 +88,19 @@ func GenOrderID() string {
 	return ulid.MustNew(ulid.Timestamp(time.Now()), rand.Reader).String()
 }
 
+// HTTPClient is a client which can make HTTP requests
+// An example implementation is net/http.Client
+type HTTPClient interface {
+	Do(req *http.Request) (*http.Response, error)
+}
+
 type options struct {
 	password    string
 	username    string
 	serviceCode string
+
+	keyStore   KeyStore
+	httpClient soap.HTTPClient
 }
 
 // A Option sets options such as credentials, tls, etc.
@@ -106,46 +115,51 @@ func WithAuth(username, password, serviceCode string) Option {
 	}
 }
 
+// WithHTTPClient is an Option to set the HTTP client to use
+func WithHTTPClient(c HTTPClient) Option {
+	return func(o *options) {
+		o.httpClient = c
+	}
+}
+
+// WithKeyStore is an Option to set BasicAuth
+func WithKeyStore(keyStore KeyStore) Option {
+	return func(o *options) {
+		o.keyStore = keyStore
+	}
+}
+
 var ns2Opt = soap.WithNS2("http://partnerapi.bankplus.viettel.com/")
 
-var defaultOptions = options{
-	username:    os.Getenv("VIETTELPAY_USERNAME"),
-	password:    os.Getenv("VIETTELPAY_PASSWORD"),
-	serviceCode: os.Getenv("VIETTELPAY_SERVICE_CODE"),
-}
+var defaultOptions = options{}
 
 type partnerAPI struct {
 	client *soap.Client
-	opts   *options
 
-	PartnerPrivateKey *rsa.PrivateKey
-	ViettelPublicKey  *rsa.PublicKey
+	password    string
+	username    string
+	serviceCode string
+
+	keyStore KeyStore
 }
 
-func NewPartnerAPI(ctx context.Context, url string, opt ...Option) (_ PartnerAPI, err error) {
+func NewPartnerAPI(url string, opt ...Option) (_ PartnerAPI, err error) {
 	opts := defaultOptions
 	for _, o := range opt {
 		o(&opts)
 	}
 
-	var (
-		prikey *rsa.PrivateKey
-		pubkey *rsa.PublicKey
-	)
-	if prikey, err = partnerKey(ctx, "file:///workspaces/viettelpay/keys/partner-private-key.pem?decoder=bytes"); err != nil {
-		return nil, err
-	}
-
-	if pubkey, err = viettelKey(ctx, "file:///workspaces/viettelpay/keys/viettel-public-key.pem?decoder=bytes"); err != nil {
-		return nil, err
+	if opts.keyStore == nil {
+		return nil, errors.New("missing keyStore option")
 	}
 
 	return &partnerAPI{
-		client: soap.NewClient(url, ns2Opt),
-		opts:   &opts,
+		client: soap.NewClient(url, ns2Opt, soap.WithHTTPClient(opts.httpClient)),
 
-		PartnerPrivateKey: prikey,
-		ViettelPublicKey:  pubkey,
+		keyStore:    opts.keyStore,
+		username:    opts.username,
+		password:    opts.password,
+		serviceCode: opts.serviceCode,
 	}, nil
 }
 
