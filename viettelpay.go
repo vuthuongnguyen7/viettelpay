@@ -168,10 +168,7 @@ func (s *partnerAPI) CheckAccount(ctx context.Context, orderID string, checks ..
 	env := &EnvelopeBase{}
 	env.OrderID = orderID
 	err := s.Process(ctx, NewRequest("VTP305", checks, env), &results)
-	if err != nil {
-		return nil, err
-	}
-	return results, nil
+	return results, err
 }
 
 func (s *partnerAPI) RequestDisbursement(ctx context.Context, orderID string, transactionContent string, reqs ...RequestDisbursement) ([]RequestDisbursementResponse, error) {
@@ -186,10 +183,7 @@ func (s *partnerAPI) RequestDisbursement(ctx context.Context, orderID string, tr
 
 	results := []RequestDisbursementResponse{}
 	err := s.Process(ctx, NewRequest("VTP306", reqs, env), &results)
-	if err != nil {
-		return nil, err
-	}
-	return results, nil
+	return results, err
 }
 
 var emptyArray = []interface{}{}
@@ -203,8 +197,5 @@ func (s *partnerAPI) QueryRequests(ctx context.Context, orderID string, query Qu
 
 	results := []RequestDisbursementResponse{}
 	err := s.Process(ctx, NewRequest("VTP307", emptyArray, env), &results)
-	if err != nil {
-		return nil, err
-	}
-	return results, nil
+	return results, err
 }
