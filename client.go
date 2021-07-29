@@ -12,7 +12,7 @@ type EnvelopeBase struct {
 	ServiceCode string `json:"serviceCode"`
 	Username    string `json:"username"`
 
-	Data    []byte `json:"data"`
+	Data    []byte `json:"data,omitempty"`
 	OrderID string `json:"orderId"`
 }
 
@@ -35,7 +35,7 @@ type EnvelopeResponse struct {
 }
 
 type EnvelopeResponseData struct {
-	Data    []byte `json:"data"`
+	Data    []byte `json:"data,omitempty"`
 	OrderID string `json:"orderId"`
 
 	RealServiceCode string `json:"realServiceCode"`
@@ -74,16 +74,18 @@ func (s *partnerAPI) Process(ctx context.Context, req Request, result interface{
 		return err
 	}
 
-	buf := bytes.NewBuffer(nil)
-	if err = MarshalGzipJSON(buf, req.Data()); err != nil {
-		return err
-	}
-
 	envReq := req.Envelope()
-	envReq.SetData(buf.Bytes())
 	envReq.SetPassword(passwordEncrypted)
 	envReq.SetServiceCode(s.serviceCode)
 	envReq.SetUsername(s.username)
+
+	if data := req.Data(); data != nil {
+		buf := bytes.NewBuffer(nil)
+		if err = MarshalGzipJSON(buf, data); err != nil {
+			return err
+		}
+		envReq.SetData(buf.Bytes())
+	}
 
 	envReqJSON, err := json.Marshal(envReq)
 	if err != nil {
@@ -119,11 +121,13 @@ func (s *partnerAPI) Process(ctx context.Context, req Request, result interface{
 		return err
 	}
 
-	// NOTE: VTP also return data in case errors happen.
-	// So, we unmarshal data first then check error late.
-	err = UnmarshalGzipJSON(bytes.NewReader(envResData.Data), result)
-	if err != nil {
-		return err
+	if data := envResData.Data; data != nil {
+		// NOTE: VTP also return data in case errors happen.
+		// So, we unmarshal data first then check error late.
+		err = UnmarshalGzipJSON(bytes.NewReader(envResData.Data), result)
+		if err != nil {
+			return err
+		}
 	}
 
 	return envResData.CheckError()
