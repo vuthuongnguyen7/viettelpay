@@ -3,6 +3,8 @@ package viettelpay
 import (
 	"context"
 	"encoding/xml"
+
+	"giautm.dev/viettelpay/soap"
 )
 
 type Process struct {
@@ -17,6 +19,13 @@ type ProcessResponse struct {
 	XMLName xml.Name `xml:"http://partnerapi.bankplus.viettel.com/ processResponse"`
 
 	Return_ string `xml:"return,omitempty" json:"return,omitempty"`
+}
+
+func newSoapClient(url string, http HTTPClient) SoapClient {
+	return soap.NewClient(url,
+		soap.WithHTTPClient(http),
+		soap.WithNS2("http://partnerapi.bankplus.viettel.com/"),
+	)
 }
 
 func (s *partnerAPI) call(ctx context.Context, request *Process) (*ProcessResponse, error) {

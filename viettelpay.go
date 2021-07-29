@@ -7,7 +7,6 @@ import (
 	"net/http"
 	"time"
 
-	"giautm.dev/viettelpay/soap"
 	ulid "github.com/oklog/ulid/v2"
 )
 
@@ -100,7 +99,7 @@ type options struct {
 	serviceCode string
 
 	keyStore   KeyStore
-	httpClient soap.HTTPClient
+	httpClient HTTPClient
 }
 
 // A Option sets options such as credentials, tls, etc.
@@ -129,22 +128,21 @@ func WithKeyStore(keyStore KeyStore) Option {
 	}
 }
 
-var ns2Opt = soap.WithNS2("http://partnerapi.bankplus.viettel.com/")
-
-var defaultOptions = options{}
+type SoapClient interface {
+	CallContext(ctx context.Context, soapAction string, request, response interface{}) error
+}
 
 type partnerAPI struct {
-	client *soap.Client
-
 	password    string
 	username    string
 	serviceCode string
 
+	client   SoapClient
 	keyStore KeyStore
 }
 
 func NewPartnerAPI(url string, opt ...Option) (_ PartnerAPI, err error) {
-	opts := defaultOptions
+	opts := options{}
 	for _, o := range opt {
 		o(&opts)
 	}
@@ -154,8 +152,7 @@ func NewPartnerAPI(url string, opt ...Option) (_ PartnerAPI, err error) {
 	}
 
 	return &partnerAPI{
-		client: soap.NewClient(url, ns2Opt, soap.WithHTTPClient(opts.httpClient)),
-
+		client:      newSoapClient(url, opts.httpClient),
 		keyStore:    opts.keyStore,
 		username:    opts.username,
 		password:    opts.password,
