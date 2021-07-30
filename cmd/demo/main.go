@@ -67,11 +67,19 @@ func main() {
 	)
 	fmt.Println(result)
 
-	var batchErr *viettelpay.BatchError
-	if errors.As(err, &batchErr) {
-		if batchErr.Code == "DISB_SUCCESS" {
-			fmt.Println("Chi thành công")
-		}
+	// var batchErr *viettelpay.BatchError
+	// if errors.As(err, &batchErr) {
+	// 	if batchErr.Code == "DISB_SUCCESS" {
+	// 		fmt.Println("Chi thành công")
+	// 	}
+	// } else if err != nil {
+	// 	// Panic for other error
+	// 	panic(err)
+	// }
+
+	// See: https://blog.golang.org/go1.13-errors
+	if errors.Is(err, viettelpay.ErrBatchDisbSuccess) {
+		fmt.Println("Chi thành công")
 	} else if err != nil {
 		// Panic for other error
 		panic(err)
