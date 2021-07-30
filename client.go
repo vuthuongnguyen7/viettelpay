@@ -60,8 +60,8 @@ func (e EnvelopeResponseData) CheckError() error {
 		}
 	} else if e.BatchErrorCode != "" {
 		return &ViettelPayBatchError{
-			Code: e.ErrorCode,
-			Desc: e.ErrorDesc,
+			Code: e.BatchErrorCode,
+			Desc: e.BatchErrorDesc,
 		}
 	}
 

@@ -183,8 +183,6 @@ func (s *partnerAPI) RequestDisbursement(ctx context.Context, orderID string, tr
 	return results, err
 }
 
-var emptyArray = []interface{}{}
-
 func (s *partnerAPI) QueryRequests(ctx context.Context, orderID string, query QueryRequests) ([]RequestDisbursementResponse, error) {
 	env := &QueryRequestEnvelope{}
 	env.OrderID = orderID
@@ -193,6 +191,6 @@ func (s *partnerAPI) QueryRequests(ctx context.Context, orderID string, query Qu
 	}
 
 	results := []RequestDisbursementResponse{}
-	err := s.Process(ctx, NewRequest("VTP307", emptyArray, env), &results)
+	err := s.Process(ctx, NewRequest("VTP307", nil, env), &results)
 	return results, err
 }
