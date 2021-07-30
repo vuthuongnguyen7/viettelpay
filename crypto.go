@@ -1,6 +1,7 @@
 package viettelpay
 
 import (
+	"bytes"
 	"crypto"
 	"crypto/rand"
 	"crypto/rsa"
@@ -13,6 +14,7 @@ import (
 type KeyStore interface {
 	Sign(data []byte) (signature []byte, err error)
 	Verify(data, signature []byte) (err error)
+	Decrypt(msg []byte) (string, error)
 	Encrypt(msg []byte) (string, error)
 }
 
@@ -49,29 +51,64 @@ func (s *keyStore) Verify(data, signature []byte) error {
 	return rsa.VerifyPKCS1v15(s.viettelPublicKey, crypto.SHA1, hashed[:], signature)
 }
 
+func (s *keyStore) Decrypt(msg []byte) (string, error) {
+	return Decrypt(msg, s.partnerPrivateKey)
+}
+
 func (s *keyStore) Encrypt(msg []byte) (string, error) {
-	keySize := s.viettelPublicKey.Size()
+	return Encrypt(msg, s.viettelPublicKey)
+}
+
+func Decrypt(msg []byte, privateKey *rsa.PrivateKey) (string, error) {
+	result := bytes.NewBuffer(nil)
+
+	keySize := privateKey.Size()
+	base64BlockSize := base64.StdEncoding.EncodedLen(keySize)
+	iterations := len(msg) / base64BlockSize
+
+	ciphertext := make([]byte, base64.StdEncoding.DecodedLen(base64BlockSize))
+	r := base64.NewDecoder(base64.StdEncoding, bytes.NewReader(msg))
+	for i := 0; i < iterations; i++ {
+		n, err := r.Read(ciphertext)
+		if err != nil {
+			return "", err
+		}
+
+		reverseBytes(ciphertext[:n])
+		plaintext, err := privateKey.Decrypt(rand.Reader, ciphertext[:n], nil)
+		if err != nil {
+			return "", err
+		}
+
+		result.Write(plaintext)
+	}
+
+	return result.String(), nil
+}
+
+func Encrypt(msg []byte, publicKey *rsa.PublicKey) (string, error) {
+	keySize := publicKey.Size()
 	maxLength := keySize - 42
 	dataLength := len(msg)
 	iterations := dataLength / maxLength
 
-	data := ""
+	result := ""
 	for i := 0; i <= iterations; i++ {
 		last := (i + 1) * maxLength
 		if last > dataLength {
 			last = dataLength
 		}
 
-		bytes, err := rsa.EncryptPKCS1v15(rand.Reader, s.viettelPublicKey, msg[i*maxLength:last])
+		ciphertext, err := rsa.EncryptPKCS1v15(rand.Reader, publicKey, msg[i*maxLength:last])
 		if err != nil {
 			return "", err
 		}
 
-		reverseBytes(bytes)
-		data += base64.StdEncoding.EncodeToString(bytes)
+		reverseBytes(ciphertext)
+		result += base64.StdEncoding.EncodeToString(ciphertext)
 	}
 
-	return data, nil
+	return result, nil
 }
 
 func reverseBytes(in []byte) []byte {
