@@ -67,7 +67,7 @@ func main() {
 	)
 	fmt.Println(result)
 
-	var batchErr *viettelpay.ViettelPayBatchError
+	var batchErr *viettelpay.BatchError
 	if errors.As(err, &batchErr) {
 		if batchErr.Code == "DISB_SUCCESS" {
 			fmt.Println("Chi thành công")

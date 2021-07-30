@@ -4,20 +4,20 @@ import (
 	"fmt"
 )
 
-type ViettelPayBatchError struct {
-	Code string `json:"errorCode"`
-	Desc string `json:"errorDesc"`
+type BatchError struct {
+	Code string `json:"batchErrorCode"`
+	Desc string `json:"batchErrorDesc"`
 }
 
-func (e ViettelPayBatchError) Error() string {
+func (e BatchError) Error() string {
 	return fmt.Sprintf("ViettelPay(%s): %s", e.Code, e.Desc)
 }
 
-type ViettelPayError struct {
+type Error struct {
 	Code string `json:"errorCode"`
 	Desc string `json:"errorDesc"`
 }
 
-func (e ViettelPayError) Error() string {
+func (e Error) Error() string {
 	return fmt.Sprintf("ViettelPay(%s): %s", e.Code, e.Desc)
 }

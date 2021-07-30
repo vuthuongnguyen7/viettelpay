@@ -54,12 +54,12 @@ type EnvelopeResponseData struct {
 
 func (e EnvelopeResponseData) CheckError() error {
 	if e.ErrorCode != "00" {
-		return &ViettelPayError{
+		return &Error{
 			Code: e.ErrorCode,
 			Desc: e.ErrorDesc,
 		}
 	} else if e.BatchErrorCode != "" {
-		return &ViettelPayBatchError{
+		return &BatchError{
 			Code: e.BatchErrorCode,
 			Desc: e.BatchErrorDesc,
 		}
