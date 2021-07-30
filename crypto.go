@@ -7,7 +7,6 @@ import (
 	"crypto/rsa"
 	"crypto/sha1"
 	"crypto/x509"
-	"encoding/asn1"
 	"encoding/base64"
 	"encoding/pem"
 	"errors"
@@ -88,14 +87,14 @@ func GenerateKeysPEM(prvKeyDst, pubKeyDst io.Writer, bits int) error {
 		return err
 	}
 
-	asn1Bytes, err := asn1.Marshal(key.PublicKey)
+	derPKIX, err := x509.MarshalPKIXPublicKey(&key.PublicKey)
 	if err != nil {
 		return err
 	}
 
 	err = pem.Encode(pubKeyDst, &pem.Block{
 		Type:  "PUBLIC KEY",
-		Bytes: asn1Bytes,
+		Bytes: derPKIX,
 	})
 	return err
 }
