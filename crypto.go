@@ -75,7 +75,7 @@ func (s *keyStore) Encrypt(msg []byte) (string, error) {
 }
 
 func GenerateKeysPEM(prvKeyDst, pubKeyDst io.Writer, bits int) error {
-	key, err := rsa.GenerateKey(rand.Reader, 1024)
+	key, err := rsa.GenerateKey(rand.Reader, bits)
 	if err != nil {
 		return err
 	}
