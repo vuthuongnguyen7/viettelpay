@@ -9,6 +9,7 @@ import (
 	"crypto/x509"
 	"encoding/base64"
 	"errors"
+	"io"
 )
 
 type KeyStore interface {
@@ -52,63 +53,79 @@ func (s *keyStore) Verify(data, signature []byte) error {
 }
 
 func (s *keyStore) Decrypt(msg []byte) (string, error) {
-	return Decrypt(msg, s.partnerPrivateKey)
+	buf := bytes.NewBuffer(nil)
+	err := Decrypt(buf, bytes.NewReader(msg), len(msg), s.partnerPrivateKey)
+	if err != nil {
+		return "", err
+	}
+
+	return buf.String(), nil
 }
 
 func (s *keyStore) Encrypt(msg []byte) (string, error) {
-	return Encrypt(msg, s.viettelPublicKey)
+	buf := bytes.NewBuffer(nil)
+	err := Encrypt(buf, bytes.NewReader(msg), len(msg), s.viettelPublicKey)
+	if err != nil {
+		return "", err
+	}
+
+	return buf.String(), nil
 }
 
-func Decrypt(msg []byte, privateKey *rsa.PrivateKey) (string, error) {
-	result := bytes.NewBuffer(nil)
-
+func Decrypt(dst io.Writer, src io.Reader, srcSize int, privateKey *rsa.PrivateKey) error {
 	keySize := privateKey.Size()
 	base64BlockSize := base64.StdEncoding.EncodedLen(keySize)
-	iterations := len(msg) / base64BlockSize
+	iterations := srcSize / base64BlockSize
 
 	ciphertext := make([]byte, base64.StdEncoding.DecodedLen(base64BlockSize))
-	r := base64.NewDecoder(base64.StdEncoding, bytes.NewReader(msg))
+	r := base64.NewDecoder(base64.StdEncoding, src)
 	for i := 0; i < iterations; i++ {
 		n, err := r.Read(ciphertext)
 		if err != nil {
-			return "", err
+			return err
 		}
 
 		reverseBytes(ciphertext[:n])
 		plaintext, err := privateKey.Decrypt(rand.Reader, ciphertext[:n], nil)
 		if err != nil {
-			return "", err
+			return err
 		}
 
-		result.Write(plaintext)
+		dst.Write(plaintext)
 	}
 
-	return result.String(), nil
+	return nil
 }
 
-func Encrypt(msg []byte, publicKey *rsa.PublicKey) (string, error) {
+func Encrypt(dst io.Writer, src io.Reader, srcSize int, publicKey *rsa.PublicKey) error {
+	b64 := base64.NewEncoder(base64.StdEncoding, dst)
+
 	keySize := publicKey.Size()
 	maxLength := keySize - 42
-	dataLength := len(msg)
-	iterations := dataLength / maxLength
+	iterations := srcSize / maxLength
 
-	result := ""
+	plaintext := make([]byte, maxLength)
 	for i := 0; i <= iterations; i++ {
-		last := (i + 1) * maxLength
-		if last > dataLength {
-			last = dataLength
+		n, err := src.Read(plaintext)
+		if err != nil {
+			return err
 		}
 
-		ciphertext, err := rsa.EncryptPKCS1v15(rand.Reader, publicKey, msg[i*maxLength:last])
+		ciphertext, err := rsa.EncryptPKCS1v15(rand.Reader, publicKey, plaintext[:n])
 		if err != nil {
-			return "", err
+			return err
 		}
 
 		reverseBytes(ciphertext)
-		result += base64.StdEncoding.EncodeToString(ciphertext)
+		b64.Write(ciphertext)
+
+		// Flush base64 chunk
+		if err = b64.Close(); err != nil {
+			return err
+		}
 	}
 
-	return result, nil
+	return nil
 }
 
 func reverseBytes(in []byte) []byte {
