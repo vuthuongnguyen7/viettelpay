@@ -7,7 +7,9 @@ import (
 	"crypto/rsa"
 	"crypto/sha1"
 	"crypto/x509"
+	"encoding/asn1"
 	"encoding/base64"
+	"encoding/pem"
 	"errors"
 	"io"
 )
@@ -70,6 +72,32 @@ func (s *keyStore) Encrypt(msg []byte) (string, error) {
 	}
 
 	return buf.String(), nil
+}
+
+func GenerateKeysPEM(prvKeyDst, pubKeyDst io.Writer, bits int) error {
+	key, err := rsa.GenerateKey(rand.Reader, 1024)
+	if err != nil {
+		return err
+	}
+
+	err = pem.Encode(prvKeyDst, &pem.Block{
+		Type:  "RSA PRIVATE KEY",
+		Bytes: x509.MarshalPKCS1PrivateKey(key),
+	})
+	if err != nil {
+		return err
+	}
+
+	asn1Bytes, err := asn1.Marshal(key.PublicKey)
+	if err != nil {
+		return err
+	}
+
+	err = pem.Encode(pubKeyDst, &pem.Block{
+		Type:  "PUBLIC KEY",
+		Bytes: asn1Bytes,
+	})
+	return err
 }
 
 func Decrypt(dst io.Writer, src io.Reader, srcSize int, privateKey *rsa.PrivateKey) error {
