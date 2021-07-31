@@ -161,9 +161,10 @@ func NewPartnerAPI(url string, opt ...Option) (_ PartnerAPI, err error) {
 }
 
 func (s *partnerAPI) CheckAccount(ctx context.Context, orderID string, checks ...CheckAccount) ([]CheckAccountResponse, error) {
-	results := []CheckAccountResponse{}
 	env := &EnvelopeBase{}
 	env.OrderID = orderID
+
+	results := []CheckAccountResponse{}
 	err := s.Process(ctx, NewRequest("VTP305", checks, env), &results)
 	return results, err
 }
