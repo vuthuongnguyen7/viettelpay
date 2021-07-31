@@ -155,12 +155,8 @@ func Encrypt(dst io.Writer, src io.Reader, srcSize int, publicKey *rsa.PublicKey
 	return nil
 }
 
-func reverseBytes(in []byte) []byte {
-	for l, r := 0, len(in)-1; l < r; {
-		in[l], in[r] = in[r], in[l]
-		l++
-		r--
+func reverseBytes(p []byte) {
+	for l, r := 0, len(p)-1; l < r; l, r = l+1, r-1 {
+		p[l], p[r] = p[r], p[l]
 	}
-
-	return in
 }
