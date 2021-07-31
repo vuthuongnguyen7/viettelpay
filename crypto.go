@@ -45,7 +45,7 @@ func NewKeyStore(partnerPriKey, viettelPubKey []byte) (_ KeyStore, err error) {
 
 func (s *keyStore) Sign(data []byte) ([]byte, error) {
 	hashed := sha1.Sum(data)
-	return s.partnerPrivateKey.Sign(rand.Reader, hashed[:], crypto.SHA1)
+	return rsa.SignPKCS1v15(rand.Reader, s.partnerPrivateKey, crypto.SHA1, hashed[:])
 }
 
 func (s *keyStore) Verify(data, signature []byte) error {
@@ -99,21 +99,21 @@ func GenerateKeysPEM(prvKeyDst, pubKeyDst io.Writer, bits int) error {
 	return err
 }
 
-func Decrypt(dst io.Writer, src io.Reader, srcSize int, privateKey *rsa.PrivateKey) error {
-	keySize := privateKey.Size()
-	base64BlockSize := base64.StdEncoding.EncodedLen(keySize)
-	iterations := srcSize / base64BlockSize
+func Decrypt(dst io.Writer, src io.Reader, srcSize int, key *rsa.PrivateKey) error {
+	b64 := base64.NewDecoder(base64.StdEncoding, src)
 
-	ciphertext := make([]byte, base64.StdEncoding.DecodedLen(base64BlockSize))
-	r := base64.NewDecoder(base64.StdEncoding, src)
+	b64BlockSize := base64.StdEncoding.EncodedLen(key.Size())
+	iterations := srcSize / b64BlockSize
+
+	ciphertext := make([]byte, base64.StdEncoding.DecodedLen(b64BlockSize))
 	for i := 0; i < iterations; i++ {
-		n, err := r.Read(ciphertext)
+		n, err := b64.Read(ciphertext)
 		if err != nil {
 			return err
 		}
 
 		reverseBytes(ciphertext[:n])
-		plaintext, err := privateKey.Decrypt(rand.Reader, ciphertext[:n], nil)
+		plaintext, err := rsa.DecryptPKCS1v15(rand.Reader, key, ciphertext[:n])
 		if err != nil {
 			return err
 		}
@@ -124,11 +124,11 @@ func Decrypt(dst io.Writer, src io.Reader, srcSize int, privateKey *rsa.PrivateK
 	return nil
 }
 
-func Encrypt(dst io.Writer, src io.Reader, srcSize int, publicKey *rsa.PublicKey) error {
+func Encrypt(dst io.Writer, src io.Reader, srcSize int, key *rsa.PublicKey) error {
 	b64 := base64.NewEncoder(base64.StdEncoding, dst)
 
-	keySize := publicKey.Size()
-	maxLength := keySize - 42
+	// See EncryptPKCS1v15 description for max length
+	maxLength := key.Size() - 11
 	iterations := srcSize / maxLength
 
 	plaintext := make([]byte, maxLength)
@@ -138,7 +138,7 @@ func Encrypt(dst io.Writer, src io.Reader, srcSize int, publicKey *rsa.PublicKey
 			return err
 		}
 
-		ciphertext, err := rsa.EncryptPKCS1v15(rand.Reader, publicKey, plaintext[:n])
+		ciphertext, err := rsa.EncryptPKCS1v15(rand.Reader, key, plaintext[:n])
 		if err != nil {
 			return err
 		}
