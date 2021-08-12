@@ -17,9 +17,9 @@ type CheckAccount struct {
 
 type CheckAccountResponse struct {
 	CheckAccount
-	Package string `json:"package"`
-	Code    string `json:"errorCode"`
-	Message string `json:"errorMsg"`
+	Package   string `json:"package"`
+	ErrorCode string `json:"errorCode"`
+	ErrorDesc string `json:"errorDesc"`
 }
 
 type RequestDisbursement struct {
@@ -33,8 +33,8 @@ type RequestDisbursement struct {
 
 type RequestDisbursementResponse struct {
 	RequestDisbursement
-	Code    string `json:"errorCode"`
-	Message string `json:"errorMsg"`
+	ErrorCode string `json:"errorCode"`
+	ErrorDesc string `json:"errorDesc"`
 }
 
 type RequestDisbursementEnvelope struct {

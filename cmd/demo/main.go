@@ -16,7 +16,7 @@ var reqs = []viettelpay.CheckAccount{
 		MSISDN:       "84365233899",
 		CustomerName: "0365233899",
 	},
-	// {MSISDN: "84362634580", CustomerName: "NGUY THI QUYNH"},
+	{MSISDN: "84362634580", CustomerName: "NGUY THI QUYNH"},
 	// {MSISDN: "84983647257", CustomerName: "Dinh Thi Quynh"},
 	// {MSISDN: "84968008909", CustomerName: "Cong Ly"},
 }
@@ -48,11 +48,13 @@ func main() {
 		panic(err)
 	}
 
-	// result, err := partnerAPI.CheckAccount(ctx, viettelpay.GenOrderID(), reqs...)
-	// fmt.Println(result)
-	// if err != nil {
-	// 	panic(err)
-	// }
+	orderID := viettelpay.GenOrderID()
+	fmt.Println("orderID", orderID)
+	result, err := partnerAPI.CheckAccount(ctx, orderID, reqs...)
+	fmt.Println(result)
+	if err != nil {
+		panic(err)
+	}
 
 	// orderID := viettelpay.GenOrderID()
 	// result2, err := partnerAPI.RequestDisbursement(ctx, orderID, "Test", reqs2...)
@@ -61,11 +63,11 @@ func main() {
 	// 	panic(err)
 	// }
 
-	result, err := partnerAPI.QueryRequests(ctx,
-		"01FBRYWSNEWB265WEHHEHCDRH4",
-		nil,
-	)
-	fmt.Println(result)
+	// result, err := partnerAPI.QueryRequests(ctx,
+	// 	"01FBRYWSNEWB265WEHHEHCDRH4",
+	// 	nil,
+	// )
+	// fmt.Println(result)
 
 	// var batchErr *viettelpay.BatchError
 	// if errors.As(err, &batchErr) {
