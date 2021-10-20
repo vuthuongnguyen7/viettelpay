@@ -31,10 +31,17 @@ type RequestDisbursement struct {
 	Note          string `json:"note"`
 }
 
+func (rd RequestDisbursement) CheckAccount() CheckAccount {
+	return CheckAccount{
+		CustomerName: rd.CustomerName,
+		MSISDN:       rd.MSISDN,
+	}
+}
+
 type RequestDisbursementResponse struct {
 	RequestDisbursement
 	ErrorCode string `json:"errorCode"`
-	ErrorDesc string `json:"errorDesc"`
+	ErrorMsg  string `json:"errorMsg"`
 }
 
 type RequestDisbursementEnvelope struct {
