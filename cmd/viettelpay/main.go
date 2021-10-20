@@ -99,12 +99,11 @@ func buildCLI() *cli.App {
 				}
 
 				results, err := partnerAPI.QueryRequests(ctx, orderID, nil)
+				for _, r := range results {
+					fmt.Printf("%s - %s - %s \n", r.TransactionID, r.ErrorCode, r.ErrorMsg)
+				}
 				if errors.Is(err, viettelpay.ErrBatchDisbSuccess) {
 					fmt.Println("Chi thành công")
-					for _, r := range results {
-						fmt.Printf("%s - %s - %s \n", r.TransactionID, r.ErrorCode, r.ErrorMsg)
-					}
-
 				} else if err != nil {
 					// Panic for other error
 					return cli.Exit(fmt.Sprintf("Unable to query result. Error: %v", err), 1)
