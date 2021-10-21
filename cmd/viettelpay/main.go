@@ -6,20 +6,18 @@ import (
 	"fmt"
 	"os"
 
-	"giautm.dev/viettelpay"
+	vtp "giautm.dev/viettelpay"
 	"github.com/urfave/cli/v2"
 
 	_ "gocloud.dev/runtimevar/constantvar"
 	_ "gocloud.dev/runtimevar/filevar"
 )
 
-// main entry point for the temporal server
 func main() {
 	app := buildCLI()
 	_ = app.Run(os.Args)
 }
 
-// buildCLI is the main entry point for the temporal server
 func buildCLI() *cli.App {
 	app := cli.NewApp()
 	app.Name = "viettelpay"
@@ -50,13 +48,13 @@ func buildCLI() *cli.App {
 				msisdn := c.String("msisdn")
 				customerName := c.String("name")
 
-				partnerAPI, err := initialClient(ctx)
+				client, err := initialClient(ctx)
 				if err != nil {
 					return err
 				}
 
-				orderID := viettelpay.GenOrderID()
-				results, err := partnerAPI.CheckAccount(ctx, orderID, viettelpay.CheckAccount{
+				orderID := vtp.GenOrderID()
+				results, err := client.CheckAccount(ctx, orderID, vtp.CheckAccount{
 					MSISDN:       msisdn,
 					CustomerName: customerName,
 				})
@@ -68,7 +66,7 @@ func buildCLI() *cli.App {
 					return cli.Exit(fmt.Sprintf("Unable to query result. Error: %v", err), 1)
 				}
 
-				return cli.Exit("All services are stopped.", 0)
+				return nil
 			},
 		},
 		{
@@ -83,46 +81,41 @@ func buildCLI() *cli.App {
 					Required: true,
 				},
 			},
-			Before: func(c *cli.Context) error {
-				if c.Args().Len() > 0 {
-					return cli.Exit("ERROR: start command doesn't support arguments. Use --service flag instead.", 1)
-				}
-				return nil
-			},
 			Action: func(c *cli.Context) error {
 				ctx := c.Context
 				orderID := c.String("orderID")
 
-				partnerAPI, err := initialClient(ctx)
+				client, err := initialClient(ctx)
 				if err != nil {
 					return err
 				}
 
-				results, err := partnerAPI.QueryRequests(ctx, orderID, nil)
+				results, err := client.QueryRequests(ctx, orderID, nil)
 				for _, r := range results {
-					fmt.Printf("%s - %s - %s \n", r.TransactionID, r.ErrorCode, r.ErrorMsg)
+					fmt.Printf("%s - %s - %s\n", r.TransactionID, r.ErrorCode, r.ErrorMsg)
 				}
-				if errors.Is(err, viettelpay.ErrBatchDisbSuccess) {
+
+				if errors.Is(err, vtp.ErrBatchDisbSuccess) {
 					fmt.Println("Chi thành công")
 				} else if err != nil {
 					// Panic for other error
 					return cli.Exit(fmt.Sprintf("Unable to query result. Error: %v", err), 1)
 				}
 
-				return cli.Exit("All services are stopped.", 0)
+				return nil
 			},
 		},
 	}
 	return app
 }
 
-func initialClient(ctx context.Context) (viettelpay.PartnerAPI, error) {
-	cfg, err := viettelpay.ProvideConfig(ctx)
+func initialClient(ctx context.Context) (vtp.PartnerAPI, error) {
+	cfg, err := vtp.ProvideConfig(ctx)
 	if err != nil {
 		return nil, cli.Exit(fmt.Sprintf("Failed to read config. Error: %v", err), 1)
 	}
 
-	partnerAPI, err := viettelpay.ProvidePartnerAPI(cfg, nil)
+	partnerAPI, err := vtp.ProvidePartnerAPI(cfg, nil)
 	if err != nil {
 		return nil, cli.Exit(fmt.Sprintf("Failed to initial partner api. Error: %v", err), 1)
 	}
