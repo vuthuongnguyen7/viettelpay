@@ -26,7 +26,7 @@ type RequestDisbursement struct {
 	TransactionID string `json:"transId"`
 	MSISDN        string `json:"msisdn"`
 	CustomerName  string `json:"customerName"`
-	Amount        int64  `json:"amount"`
+	Amount        uint64 `json:"amount"`
 	SMSContent    string `json:"smsContent"`
 	Note          string `json:"note"`
 }
@@ -46,7 +46,7 @@ type RequestDisbursementResponse struct {
 
 type RequestDisbursementEnvelope struct {
 	EnvelopeBase
-	TotalAmount        int64  `json:"totalAmount"`
+	TotalAmount        uint64 `json:"totalAmount"`
 	TotalTransactions  int    `json:"totalTrans"`
 	TransactionContent string `json:"transContent"`
 }
