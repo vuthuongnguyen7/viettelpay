@@ -21,7 +21,10 @@ func (e *BatchError) Is(target error) bool {
 }
 
 func (e BatchError) Error() string {
-	return fmt.Sprintf("ViettelPay(%s): %s", e.Code, e.Desc)
+	if e.Desc != "" {
+		return fmt.Sprintf("ViettelPay(%s): %s", e.Code, e.Desc)
+	}
+	return fmt.Sprintf("ViettelPay(%s)", e.Code)
 }
 
 type Error struct {
@@ -32,7 +35,10 @@ type Error struct {
 var _ error = (*Error)(nil)
 
 func (e Error) Error() string {
-	return fmt.Sprintf("ViettelPay(%s): %s", e.Code, e.Desc)
+	if e.Desc != "" {
+		return fmt.Sprintf("ViettelPay(%s): %s", e.Code, e.Desc)
+	}
+	return fmt.Sprintf("ViettelPay(%s)", e.Code)
 }
 
 var (

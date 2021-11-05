@@ -22,6 +22,14 @@ type CheckAccountResponse struct {
 	ErrorDesc string `json:"errorDesc"`
 }
 
+func (r CheckAccountResponse) Err() error {
+	if r.ErrorCode == "00" {
+		return nil
+	}
+
+	return &Error{Code: r.ErrorCode, Desc: r.ErrorDesc}
+}
+
 type RequestDisbursement struct {
 	TransactionID string `json:"transId"`
 	MSISDN        string `json:"msisdn"`
@@ -41,7 +49,25 @@ func (rd RequestDisbursement) CheckAccount() CheckAccount {
 type RequestDisbursementResponse struct {
 	RequestDisbursement
 	ErrorCode string `json:"errorCode"`
+	ErrorDesc string `json:"errorDesc"`
+}
+
+func (r RequestDisbursementResponse) Err() error {
+	if r.ErrorCode == "00" {
+		return nil
+	}
+
+	return &Error{Code: r.ErrorCode, Desc: r.ErrorDesc}
+}
+
+type QueryRequestsResponse struct {
+	RequestDisbursement
+	ErrorCode string `json:"errorCode"`
 	ErrorMsg  string `json:"errorMsg"`
+}
+
+func (r QueryRequestsResponse) Err() error {
+	return &BatchError{Code: r.ErrorCode, Desc: r.ErrorMsg}
 }
 
 type RequestDisbursementEnvelope struct {
@@ -87,7 +113,7 @@ type PartnerAPI interface {
 
 	CheckAccount(ctx context.Context, orderID string, checks ...CheckAccount) ([]CheckAccountResponse, error)
 	RequestDisbursement(ctx context.Context, orderID string, transactionContent string, reqs ...RequestDisbursement) ([]RequestDisbursementResponse, error)
-	QueryRequests(ctx context.Context, orderID string, query QueryRequests) ([]RequestDisbursementResponse, error)
+	QueryRequests(ctx context.Context, orderID string, query QueryRequests) ([]QueryRequestsResponse, error)
 }
 
 func GenOrderID() string {
@@ -191,14 +217,14 @@ func (s *partnerAPI) RequestDisbursement(ctx context.Context, orderID string, tr
 	return results, err
 }
 
-func (s *partnerAPI) QueryRequests(ctx context.Context, orderID string, query QueryRequests) ([]RequestDisbursementResponse, error) {
+func (s *partnerAPI) QueryRequests(ctx context.Context, orderID string, query QueryRequests) ([]QueryRequestsResponse, error) {
 	env := &QueryRequestEnvelope{}
 	env.OrderID = orderID
 	if query != nil {
 		env.QueryType, env.QueryData = query.Type(), query.Data()
 	}
 
-	results := []RequestDisbursementResponse{}
+	results := []QueryRequestsResponse{}
 	err := s.Process(ctx, NewRequest("VTP307", nil, env), &results)
 	return results, err
 }

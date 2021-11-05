@@ -92,7 +92,7 @@ func buildCLI() *cli.App {
 
 				results, err := client.QueryRequests(ctx, orderID, nil)
 				for _, r := range results {
-					fmt.Printf("%s - %s - %s\n", r.TransactionID, r.ErrorCode, r.ErrorMsg)
+					fmt.Printf("%s - %v\n", r.TransactionID, r.Err())
 				}
 
 				var batchErr *vtp.BatchError
