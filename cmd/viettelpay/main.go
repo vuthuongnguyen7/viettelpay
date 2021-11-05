@@ -95,8 +95,13 @@ func buildCLI() *cli.App {
 					fmt.Printf("%s - %s - %s\n", r.TransactionID, r.ErrorCode, r.ErrorMsg)
 				}
 
-				if errors.Is(err, vtp.ErrBatchDisbSuccess) {
-					fmt.Println("Chi thành công")
+				var batchErr *vtp.BatchError
+				if errors.As(err, &batchErr) {
+					if batchErr.Is(vtp.ErrBatchDisbSuccess) {
+						fmt.Println("Chi thành công")
+					} else {
+						fmt.Println(batchErr.Error())
+					}
 				} else if err != nil {
 					// Panic for other error
 					return cli.Exit(fmt.Sprintf("Unable to query result. Error: %v", err), 1)
