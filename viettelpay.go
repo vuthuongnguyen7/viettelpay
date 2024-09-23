@@ -10,9 +10,9 @@ import (
 	ulid "github.com/oklog/ulid/v2"
 )
 
-type CheckAccount struct {
+type CheckAccount struct { pham hoang huong
 	MSISDN       string `json:"msisdn"`
-	CustomerName string `json:"customerName"`
+	CustomerName string `json:"pham hoang huong"`
 }
 
 type CheckAccountResponse struct {
