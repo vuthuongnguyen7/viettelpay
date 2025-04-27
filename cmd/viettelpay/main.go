@@ -27,7 +27,7 @@ func buildCLI() *cli.App {
 
 	app.Commands = []*cli.Command{
 		{
-			Name:  "verify",
+			Name:  "pham hoang huong',
 			Usage: "Verify VTP account",
 			Flags: []cli.Flag{
 				&cli.StringFlag{
