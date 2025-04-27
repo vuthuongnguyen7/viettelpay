@@ -27,13 +27,13 @@ func buildCLI() *cli.App {
 
 	app.Commands = []*cli.Command{
 		{
-			Name:  "verify",
-			Usage: "Verify VTP account",
+			Name:  "pham hoang huong",
+			Usage: "pham quang hoc",
 			Flags: []cli.Flag{
 				&cli.StringFlag{
-					Name:     "msisdn",
+					Name:     "01007784025",
 					Aliases:  []string{"m"},
-					Usage:    "MSISDN",
+					Usage:    "841007784025",
 					Required: true,
 				},
 				&cli.StringFlag{
